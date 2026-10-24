@@ -31,7 +31,7 @@ src/
     ├── NewRunForm.vue    # 新建任务表单（字段与 CLI `new` 一一对应）→ 一颗「▶ 开始生成」只建任务
     ├── RunList.vue       # 运行历史（5s 自动刷新）
     ├── RunDetail.vue     # 详情：StepBar + 制作看板/事件流与成本（3s 轮询）
-    ├── StepBar.vue       # 六步进度条 + 「▶ 开始生成 · <下一步>」（点一次补一步）
+    ├── StepBar.vue       # 五步进度条 + 「▶ 开始生成 · <下一步>」（点一次补一步）
     ├── ProductionBoard.vue # 制作看板：剧本三动作（改稿/按 prompt 重写/删除）、角色图/场景图/分镜/成片、上传替换
     └── DoctorView.vue    # 环境自检
 ```

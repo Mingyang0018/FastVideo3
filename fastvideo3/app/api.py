@@ -9,7 +9,7 @@
   POST /api/runs                              新建任务（只落 run_meta.json，不启动生成）
   GET  /api/runs/{run_id}                     运行详情：meta / 事件流 / 成本 / 产物清单
   GET  /api/runs/{run_id}/board               制作看板：剧本+角色图+场景图+逐镜头(首帧/片段/度量)+成片
-  GET  /api/runs/{run_id}/steps               六步进度：done/gap/active/failed + 缺口清单 + 花费
+  GET  /api/runs/{run_id}/steps               五步进度：done/gap/active/failed + 缺口清单 + 花费
   POST /api/runs/{run_id}/step                开始生成：只跑最靠前的未完成步骤（后台子进程）
   PUT  /api/runs/{run_id}/artifacts/{stage}/{name}  上传替换角色图/场景图/分镜首帧（按画幅归一化）
   DELETE /api/runs/{run_id}/artifacts/{stage}/{name}  删产物并沿血缘精确作废下游

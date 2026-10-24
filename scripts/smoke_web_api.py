@@ -1,6 +1,6 @@
 """Web API 全链路冒烟脚本（需先启动 fastvideo3 serve --port 8765）。
 
-流程：health → POST 新建 Fake 任务 → 循环「开始生成」补完六步 → 校验详情/产物文件 → 输出结果。
+流程：health → POST 新建 Fake 任务 → 循环「开始生成」补完五步 → 校验详情/产物文件 → 输出结果。
 用途：本地或 CI 环境验证 "FastAPI + Vue 面板" 全链路（零成本，Fake 模式）。
 """
 
@@ -56,7 +56,7 @@ def main() -> int:
             steps = c.get(f"/api/runs/{rid}/steps").json()
             nxt = steps["next"]
             if nxt is None:
-                print(f"[4.{i}] 六步全部完成，累计 ¥{steps['spent_cny']}")
+                print(f"[4.{i}] 五步全部完成，累计 ¥{steps['spent_cny']}")
                 break
             print(
                 f"[4.{i}] ▶ 开始生成 · {nxt['label']}"
@@ -101,7 +101,7 @@ def main() -> int:
         doc = c.get("/api/doctor").json()
         print(f"[10] doctor: all_ok={doc['all_ok']} checks={len(doc['checks'])}")
 
-    print("\n✔ Web API 全链路冒烟通过（建任务 → 六步 → 成片）")
+    print("\n✔ Web API 全链路冒烟通过（建任务 → 五步 → 成片）")
     return 0
 
 
