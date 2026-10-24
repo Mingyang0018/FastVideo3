@@ -1,0 +1,16 @@
+# 换行与编码：这两个脚本在 Windows 上会被直接执行，所以行尾/编码是功能问题，不是洁癖。
+#
+# *.sh  必须 LF。带 CRLF 的 bash 脚本，`cd "$(dirname "$0")/.."` 这类命令会带上 \r 而报
+#       "No such file or directory"（Git Bash 与 Linux/macOS 都中招）。
+# *.ps1 用 CRLF + UTF-8 BOM。Windows PowerShell 5.1 读不到 BOM 就按本地 ANSI(GBK) 解码，
+#       中文注释/字符串里的全角括号尾字节会吞掉紧随其后的引号 —— 整脚本语法报错。
+#       BOM 存在 blob 里，任何人 clone 下来用 5.1 跑都是对的。
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.wav binary
+*.pt binary
+*.onnx binary
