@@ -30,61 +30,42 @@ flowchart LR
 | ④ 场景视频 | `clips/scene_*.mp4` + 同名 `.json` | `wan3.0-video` · `cosyvoice-v2` | 改提示词、增删参考图、改时长、只重出某一组              |
 | ⑤ 成片     | `final/final.mp4` + 字幕 + 度量报告  | FFmpeg + `qwen-vl-plus`            | 看片、点名重出、改字幕后只重跑剪辑                      |
 
-## 快速开始：新机器 → Web 面板
+## 快速开始：三条命令打开面板
 
-面板是主路径。三条命令打开浏览器，从填 KEY 到出片全程不碰命令行：
-
-```bash
-./scripts/setup.sh                                       # Linux / macOS（Windows: .\scripts\setup.ps1）
-conda activate fastvideo3                                # 新开终端都要这句 —— conda 环境不在项目目录里
-fastvideo3 serve                                         # → http://127.0.0.1:8000
-```
-
-**不用再补 `pip install -e ".[web]"`** —— setup 把起面板要的东西都装了：`[2/6]` 按
-`requirements.lock.txt` 装依赖（锁里已含 `fastapi==0.141.1` + `uvicorn==0.53.0`）；`[4/6]` 的
-`pip install -e .` 只为给你 `fastvideo3` 这个命令名（`pyproject` 的 `[project.scripts]`），
-不装也能在仓库根用 `python -m uvicorn fastvideo3.app.api:app --port 8000` 起同一个面板；
-`[6/6]` 建前端 + provision。跳过 setup 手工装时才需要 `pip install -e ".[web]"`（写 `-e .` 不带 FastAPI）。
-
-唯一的额外硬前提是 **node/npm**：前端产物 `web/dist` 不入库。机器上没 node 就只有 API、没有界面
-（`serve` 照样起来并提醒 `cd web && npm ci && npm run build`）。
-
-### `fastvideo3 serve` 起的是"一个进程两件事"
-
-`app/api.py`（FastAPI）出全部 REST 接口，同时**同源托管** `web/dist` 的 Vue 3 产物 —— 不用另起
-node 服务，没有第二个端口，也没有跨域。默认 `127.0.0.1:8000`，几个变体：
+先装两样免费软件：[Miniconda](https://docs.conda.io/en/latest/miniconda.html) 和
+[Node.js](https://nodejs.org/zh-cn)（没有 node 就只有后台、打不开界面）。
 
 ```bash
-fastvideo3 serve --reload                     # 改后端代码自动重启
-fastvideo3 serve --host 0.0.0.0 --port 8710   # 对外/换端口（局域网里另一台机器打开）
-cd web && npm run dev                         # 改前端要热更新：→ :5173，/api 自动代理到 :8000
+./scripts/setup.sh          # 装环境。Windows 上换成 .\scripts\setup.ps1
+conda activate fastvideo3   # 每次新开终端都要先这句
+fastvideo3 serve            # 然后浏览器打开 http://127.0.0.1:8000
 ```
 
-前端最终仍走 `npm run build` 的产物。`index.html` 带 `Cache-Control: no-cache`（内容寻址的
-`/assets/*` 才给长期缓存），所以构建完普通刷新就是新版 —— 这是踩过的坑：以前没有这个头，浏览器
-启发式缓存住旧 `index.html`，界面看起来像"功能没做"。
+`setup.sh` 一条命令跑完六个阶段：建 conda 环境 → 装 Python 依赖 →（可选）装本地视觉组件 →
+装本项目 → 生成 `.env` → 收 ffmpeg 与模型权重 + 构建前端 + 自检。**跑完就直接 serve，
+不用再手工 `pip install` 任何东西。**
+没装 conda 也不想装：加 `--venv`，改用项目内的 `.venv`。
 
-### 浏览器里从 0 到一条成片
+## 照着点，出一条片
 
-| # | 在面板上点什么 | 打到的接口 |
-| - | -------------- | ---------- |
-| 1 | 顶栏「环境自检」：看 KEY / ffmpeg / 模型开通状态，缺运行时点「📦 补齐项目内置运行时」 | `GET /api/doctor` · `POST /api/doctor/provision` |
-| 2 | 「新建任务」→「模型选择」第一行是百炼 API KEY（掩码输入，点到别处或按「保存」即写进 `.env`），再按探活按钮 | `PUT /api/api-keys` · `POST /api/api-keys/probe`（真发一条最小请求，≈¥0.001） |
-| 3 | 填主题 / 时长 / 档位 / 成本上限；先勾 **Fake** 就零成本走占位片（色块 + 静帧 + 静音），点「▶ 开始生成」 | `POST /api/runs` —— **只落 `run_meta.json`，不启动生成、不花钱** |
-| 4 | 详情页「▶ 开始生成 · <当前步>」补一步，五步点五次；跑起来后 3s 轮询自己翻进度 | `POST /api/runs/{run}/step`（后台子进程跑 `cli step`）· `GET .../steps` |
-| 5 | 制作看板上每步之间介入：改剧本稿 / 按意见重写 / 上传换角色图与场景图 / 候选定妆照转正 / 改场景提示词 / 只重出某一组 | `PUT .../script/text` · `POST .../script/regenerate` · `PUT .../artifacts/{stage}/{name}` · `POST .../characters/{id}/portrait` · `PUT .../scenes/{id}/prompt` · `POST .../scene-groups/{gid}/generate` |
-| 6 | 花到上限会红幅停下问人：点「继续生成…」抬新上限，已出产物一个不动、不重复花钱 | `POST .../budget/continue`（不确认时 `step` 直接回 409） |
-| 7 | 第五步补完 → 看板里播 `final.mp4`、可下载；只想重剪就删成片再补第五步，零 API 费 | `GET /api/files/{run}/final/final.mp4` · `DELETE .../final` |
+1. **顶栏「环境自检」**：12 项都绿就往下走；缺 ffmpeg 或权重就点「📦 补齐项目内置运行时」。
+2. **「新建任务」→ 展开「模型选择」**：第一行粘贴百炼 API KEY（去 `bailian.console.aliyun.com` 申请），
+   鼠标点到别处就自动存好。想确认这把 KEY 真能用，按「🔑 探活」——花一分钱左右，欠费或模型没开通当场就知道。
+3. **填四个格子**：主题、时长（秒）、分辨率档位、成本上限（元）。
+4. **第一次务必勾上 Fake**：不花钱、不需要 KEY，片子是占位色块，但五个步骤、每个按钮、`output/` 里的
+   产物目录和真跑完全一样。摸清流程了再取消勾。
+5. 点「▶ 开始生成」进详情页，**连着点五次**，一次补一步：剧本 → 角色图 → 场景图 → 场景视频 → 成片。
+   跑的时候页面自己更新。真跑一条 30 秒的片大约 ¥10–90，取决于档位。
+6. **每步之间都能改**：剧本稿直接在页面上编辑、角色图不满意就传自己的、某一组视频单独重出。
+   改完只重算被影响到的那几个镜头，已经出来的不重做、不重复花钱。
+7. **钱花到上限会自动停下来问你**，填个高一点的上限就接着跑，不是从头再来。
+8. 第五步跑完就能看片、下载 `final.mp4`（文件在 `output/<你的run>/final/`）。
 
-界面上一定会撞到的三条规矩：**全局单任务锁**（一次只跑一个生成任务，撞上了 409 会告诉你在跑哪个
-run、哪一步）· **密钥只进本机 `.env`，接口只回"有没有配"**（`GET /api/api-keys` 出的是 bool，
-`PUT` 挡跨站请求，且生成中不许换 KEY）· **降级必须响亮**（免费 edge-tts 顶上、参考图被丢弃等都进
-`degradations.json` 并显示在看板上）。
+一次只允许跑一个生成任务，别的任务会提示"正在生成中"等它跑完。接口清单在 `fastvideo3/app/api.py` 开头。
 
 ## 命令行（与面板同一份执行器）
 
-不想开浏览器也能走同一条流水线：缺口同样由 `core/progress.py` 从盘上算，执行只走 `core/stages.py`
-这一份装配，所以**面板建的任务可以命令行接着补、命令行跑到一半可以回面板点**，交替不冲突。
+不想开浏览器时用这些命令，和面板走的是同一条流水线，**两边可以交替**（面板建的任务命令行接着补，反过来也行）。
 
 ```bash
 fastvideo3 new --topic "校园喜剧" --duration 30 --fake    # Fake：零成本、无需 KEY
@@ -152,7 +133,13 @@ output/<run_id>/# script.json assets/ storyboard/ audio/ clips/ final/ qc/
 pip install -e ".[dev]" && ruff check . && mypy fastvideo3
 pytest          # 离线：单元 + Fake 全链路 + Web API（无需 KEY）
 pytest -m api   # 真实 API 冒烟（需 .env）
-cd web && npm ci && npm run build
+cd web && npm ci && npm run build          # 产物 web/dist 由后端同源托管；index.html 带 no-cache，
+                                           # 构建完普通刷新就是新版
+
+fastvideo3 serve --reload                  # 改后端代码自动重启
+cd web && npm run dev                      # 改前端要热更新：→ :5173，/api 自动代理到 :8000
+fastvideo3 serve --host 0.0.0.0 --port 8710  # 局域网里另一台机器打开面板
+python -m uvicorn fastvideo3.app.api:app --port 8000  # 不想装 fastvideo3 命令时，仓库根直接起
 ```
 
 三条硬规矩（都有测试钉着）：**同一事实只有一份实现** · **降级必须响亮**（进 `degradations.json`
